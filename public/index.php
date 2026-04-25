@@ -12,17 +12,21 @@ require_once '../app/Controllers/LoginController.php';
 require_once '../app/Controllers/OrderController.php';
 require_once '../app/Controllers/DeleteOrderController.php';
 require_once '../app/Controllers/SubscriptionController.php';
+require_once '../app/Controllers/SelectMealController.php';
+require_once '../app/Controllers/RemoveMealController.php';
+require_once '../app/Controllers/ProfileController.php';
+require_once '../app/Services/CarryOverService.php';
 
 $url = $_GET['url'] ?? '/';
 
 switch ($url) {
-    // 🏠 Home
+    // ================= HOME =================
     case '/':
         $view = '../app/Views/home.php';
         require '../app/Views/layout.php';
         break;
 
-    // 🍱 Menu
+    // ================= MENU =================
     case 'menu':
         if (!isset($_SESSION['user'])) {
             header('Location: /mealbox/public/?url=login');
@@ -33,23 +37,88 @@ switch ($url) {
 
         $user = $_SESSION['user'];
 
-        //Check subscription
+        // Subscription
         $stmt = $pdo->prepare("
-        SELECT * FROM subscriptions 
-        WHERE user_email = ? 
-        ORDER BY created_at DESC 
-        LIMIT 1
-    ");
+            SELECT * FROM subscriptions 
+            WHERE user_email = ? 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        ");
         $stmt->execute([$user]);
         $subscription = $stmt->fetch();
 
-        //No plan → redirect
         if (!$subscription) {
             header('Location: /mealbox/public/?url=subscription');
             exit();
         }
 
-        //Load menu
+        // 🔥 EXPIRY CHECK
+        $plan = $subscription['plan'];
+        $created = strtotime($subscription['created_at']);
+
+        $daysTotal = $plan === 'weekly' ? 7 : ($plan === 'monthly' ? 30 : 1);
+        $daysUsed = floor((time() - $created) / (60 * 60 * 24));
+        $daysLeft = max($daysTotal - $daysUsed, 0);
+
+        if ($daysLeft <= 0) {
+            $stmt = $pdo->prepare(
+                "UPDATE subscriptions SET status='expired' WHERE id=?",
+            );
+            $stmt->execute([$subscription['id']]);
+
+            header('Location: /mealbox/public/?url=subscription&expired=1');
+            exit();
+        }
+
+        // 🔥 RUN CARRY OVER
+        CarryOverService::process($pdo, $subscription, $user);
+
+        // 🔥 REFETCH updated subscription
+        $stmt = $pdo->prepare('SELECT * FROM subscriptions WHERE id=?');
+        $stmt->execute([$subscription['id']]);
+        $subscription = $stmt->fetch();
+
+        // 🔥 BUDGET LOGIC
+        $totalBudget = $subscription['price'];
+        $days = $plan === 'weekly' ? 7 : ($plan === 'monthly' ? 30 : 1);
+
+        $baseDaily = $totalBudget / $days;
+        $carry = $subscription['carry_over'] ?? 0;
+
+        $dailyLimit = $baseDaily + $carry;
+
+        // 🔥 TODAY TOTAL
+        $stmt = $pdo->prepare("
+            SELECT SUM(meals.price) as total
+            FROM meal_selections
+            JOIN meals ON meal_selections.meal_id = meals.id
+            WHERE meal_selections.user_email = ?
+            AND DATE(meal_selections.created_at) = CURDATE()
+        ");
+        $stmt->execute([$user]);
+        $todayTotal = $stmt->fetch()['total'] ?? 0;
+
+        // 🔥 MEAL COUNTS
+        $stmt = $pdo->prepare("
+            SELECT meal_type, COUNT(*) as total
+            FROM meal_selections
+            WHERE user_email = ?
+            GROUP BY meal_type
+        ");
+        $stmt->execute([$user]);
+        $countsRaw = $stmt->fetchAll();
+
+        $mealCounts = [
+            'breakfast' => 0,
+            'lunch' => 0,
+            'dinner' => 0,
+        ];
+
+        foreach ($countsRaw as $row) {
+            $mealCounts[$row['meal_type']] = $row['total'];
+        }
+
+        // Meals
         $controller = new MenuController();
         $meals = $controller->index();
 
@@ -57,7 +126,7 @@ switch ($url) {
         require '../app/Views/layout.php';
         break;
 
-    // 🍽 Single Meal
+    // ================= SINGLE MEAL =================
     case 'meal':
         require '../config/database.php';
 
@@ -81,24 +150,64 @@ switch ($url) {
         require '../app/Views/layout.php';
         break;
 
+    // ================= ACTIONS =================
     case 'select-meal':
         $controller = new SelectMealController();
         $controller->store();
         break;
 
-    // 🔐 Login
+    case 'remove-meal':
+        $controller = new RemoveMealController();
+        $controller->delete();
+        break;
+
+    case 'order':
+        $controller = new OrderController();
+        $controller->store();
+        break;
+
+    case 'delete-order':
+        $controller = new DeleteOrderController();
+        $controller->delete();
+        break;
+
+    // ================= AUTH =================
     case 'login':
         $controller = new LoginController();
         $controller->index();
         break;
 
-    // 🧾 Register
     case 'register':
         $controller = new LoginController();
         $controller->register();
         break;
 
-    // 💳 Subscription Page
+    case 'profile':
+        $controller = new ProfileController();
+        $controller->index();
+        break;
+
+    case 'profile-update':
+        $controller = new ProfileController();
+        $controller->update();
+        break;
+
+    case 'change-password':
+        $controller = new ProfileController();
+        $controller->changePassword();
+        break;
+
+    case 'upload-image':
+        $controller = new ProfileController();
+        $controller->uploadImage();
+        break;
+
+    case 'logout':
+        session_destroy();
+        header('Location: /mealbox/public/?url=login');
+        exit();
+
+    // ================= SUBSCRIPTION =================
     case 'subscription':
         if (!isset($_SESSION['user'])) {
             header('Location: /mealbox/public/?url=login');
@@ -109,13 +218,12 @@ switch ($url) {
         require '../app/Views/layout.php';
         break;
 
-    // 💾 Save Subscription
     case 'subscribe-store':
         $controller = new SubscriptionController();
         $controller->store();
         break;
 
-    // 📊 Dashboard (Protected + Subscription Required)
+    // ================= DASHBOARD =================
     case 'dashboard':
         if (!isset($_SESSION['user'])) {
             header('Location: /mealbox/public/?url=login');
@@ -126,7 +234,7 @@ switch ($url) {
 
         $user = $_SESSION['user'];
 
-        // 🔥 Check subscription FIRST
+        // Subscription
         $stmt = $pdo->prepare("
             SELECT * FROM subscriptions 
             WHERE user_email = ? 
@@ -136,56 +244,82 @@ switch ($url) {
         $stmt->execute([$user]);
         $subscription = $stmt->fetch();
 
-        // ❌ No subscription → redirect
         if (!$subscription) {
             header('Location: /mealbox/public/?url=subscription');
             exit();
         }
 
-        // ✅ Orders
-        $stmt = $pdo->prepare("
-            SELECT orders.id, meals.name, meals.price, orders.created_at
-            FROM orders
-            JOIN meals ON orders.meal_id = meals.id
-            WHERE orders.user_email = ?
-            ORDER BY orders.created_at DESC
-        ");
-        $stmt->execute([$user]);
-        $orders = $stmt->fetchAll();
+        // 🔥 EXPIRY CHECK
+        $plan = $subscription['plan'];
+        $created = strtotime($subscription['created_at']);
 
-        // ✅ Stats
-        $totalOrders = count($orders);
+        $daysTotal = $plan === 'weekly' ? 7 : ($plan === 'monthly' ? 30 : 1);
+        $daysUsed = floor((time() - $created) / (60 * 60 * 24));
+        $daysLeft = max($daysTotal - $daysUsed, 0);
 
-        $totalSpent = 0;
-        foreach ($orders as $order) {
-            $totalSpent += $order['price'];
+        if ($daysLeft <= 0) {
+            $stmt = $pdo->prepare(
+                "UPDATE subscriptions SET status='expired' WHERE id=?",
+            );
+            $stmt->execute([$subscription['id']]);
+
+            header('Location: /mealbox/public/?url=subscription&expired=1');
+            exit();
         }
 
-        // ✅ Load dashboard
+        // 🔥 RUN CARRY
+        CarryOverService::process($pdo, $subscription, $user);
+
+        // 🔥 REFETCH
+        $stmt = $pdo->prepare('SELECT * FROM subscriptions WHERE id=?');
+        $stmt->execute([$subscription['id']]);
+        $subscription = $stmt->fetch();
+
+        // 🔥 BUDGET
+        $totalBudget = $subscription['price'];
+        $days = $plan === 'weekly' ? 7 : ($plan === 'monthly' ? 30 : 1);
+
+        $baseDaily = $totalBudget / $days;
+        $carry = $subscription['carry_over'] ?? 0;
+
+        $dailyLimit = $baseDaily + $carry;
+
+        // 🔥 TODAY TOTAL
+        $stmt = $pdo->prepare("
+            SELECT SUM(meals.price) as total
+            FROM meal_selections
+            JOIN meals ON meal_selections.meal_id = meals.id
+            WHERE meal_selections.user_email = ?
+            AND DATE(meal_selections.created_at) = CURDATE()
+        ");
+        $stmt->execute([$user]);
+        $todayTotal = $stmt->fetch()['total'] ?? 0;
+
+        // 🔥 SELECTED MEALS
+        $stmt = $pdo->prepare("
+            SELECT meal_selections.id, meals.name, meals.image, meal_selections.meal_type
+            FROM meal_selections
+            JOIN meals ON meal_selections.meal_id = meals.id
+            WHERE meal_selections.user_email = ?
+        ");
+        $stmt->execute([$user]);
+        $selectedMeals = $stmt->fetchAll();
+
+        $breakfastMeals = [];
+        $lunchMeals = [];
+        $dinnerMeals = [];
+
+        foreach ($selectedMeals as $meal) {
+            if ($meal['meal_type'] === 'breakfast') {
+                $breakfastMeals[] = $meal;
+            } elseif ($meal['meal_type'] === 'lunch') {
+                $lunchMeals[] = $meal;
+            } else {
+                $dinnerMeals[] = $meal;
+            }
+        }
+
         $view = '../app/Views/dashboard.php';
         require '../app/Views/layout.php';
-        break;
-
-    // 🛒 Order
-    case 'order':
-        $controller = new OrderController();
-        $controller->store();
-        break;
-
-    // ❌ Delete Order
-    case 'delete-order':
-        $controller = new DeleteOrderController();
-        $controller->delete();
-        break;
-
-    // 🚪 Logout
-    case 'logout':
-        session_destroy();
-        header('Location: /mealbox/public/?url=login');
-        exit();
-
-    // ❌ 404
-    default:
-        echo '404 Not Found';
         break;
 }

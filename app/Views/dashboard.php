@@ -2,139 +2,223 @@
 
 <div class="min-h-screen bg-black pt-28 px-6 md:px-10">
 
-    <!-- Page Heading -->
+    <!-- Heading -->
     <div class="text-center mb-12">
-        <h2 class="text-3xl font-extrabold text-white tracking-wide inline-block border-b-4 border-green-500 pb-2">
+        <h2 class="text-3xl font-extrabold text-white border-b-4 border-green-500 inline-block pb-2">
             Dashboard
         </h2>
     </div>
 
-    <!-- Stats -->
-    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+    <?php
+    $plan = $subscription['plan'];
+    $created = strtotime($subscription['created_at']);
 
-        <div class="bg-gray-900 bg-opacity-90 backdrop-blur-md p-6 rounded-xl shadow-lg border border-gray-700">
-            <h3 class="text-gray-400">Total Orders</h3>
-            <p class="text-2xl font-bold text-green-400">
-                <?php echo $totalOrders; ?>
+    $daysTotal = $plan === 'weekly' ? 7 : ($plan === 'monthly' ? 30 : 1);
+    $daysUsed = floor((time() - $created) / (60 * 60 * 24));
+    $daysLeft = max($daysTotal - $daysUsed, 0);
+
+    $totalBudget = $subscription['price'];
+    $carry = $subscription['carry_over'] ?? 0;
+
+    if ($daysUsed === 0) {
+        $carry = 0;
+    }
+
+    $baseDaily = $totalBudget / $daysTotal;
+
+    $percent = $dailyLimit > 0 ? ($todayTotal / $dailyLimit) * 100 : 0;
+    $percent = min($percent, 100);
+
+    $remainingTotal = $totalBudget - $todayTotal;
+    ?>
+
+    <!-- 🔥 TOP SECTION -->
+    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+
+        <!-- Plan -->
+        <div class="bg-gray-900 p-6 rounded-xl border border-green-500 
+                    flex flex-col justify-center items-center text-center min-h-[140px]">
+            <h3 class="text-gray-400">Plan</h3>
+            <p class="text-green-400 text-xl font-bold mt-2">
+                <?php echo strtoupper($plan); ?>
             </p>
         </div>
 
-        <div class="bg-gray-900 bg-opacity-90 backdrop-blur-md p-6 rounded-xl shadow-lg border border-gray-700">
-            <h3 class="text-gray-400">Total Spent</h3>
-            <p class="text-2xl font-bold text-green-400">
-                TK <?php echo number_format($totalSpent, 2); ?>
+        <!-- Days Left -->
+        <div class="bg-gray-900 p-6 rounded-xl border border-yellow-500 
+                    flex flex-col justify-center items-center text-center min-h-[140px]">
+            <h3 class="text-gray-400">Days Left</h3>
+            <p class="text-yellow-400 text-xl font-bold mt-2">
+                <?php echo $daysLeft; ?> days
             </p>
         </div>
 
-        <div class="bg-gray-900 bg-opacity-90 backdrop-blur-md p-6 rounded-xl shadow-lg border border-gray-700">
-            <h3 class="text-gray-400">User</h3>
-            <p class="text-sm text-gray-200 break-all">
-                <?php echo htmlspecialchars($user); ?>
+        <!-- Budget -->
+        <div class="bg-gray-900 p-6 rounded-xl border border-blue-500 shadow-lg">
+
+            <h3 class="text-gray-400 mb-3">Budget</h3>
+
+            <p class="text-white text-sm">
+                Total Plan: 
+                <span class="font-bold text-blue-400">
+                    TK <?php echo number_format($totalBudget, 2); ?>
+                </span>
             </p>
+
+            <p class="text-purple-400 text-sm">
+                Carry Over: TK <?php echo number_format($carry, 2); ?>
+            </p>
+
+            <hr class="border-gray-700 my-3">
+
+            <p class="text-white text-sm">
+                Daily Base: 
+                <span class="text-gray-300">
+                    TK <?php echo number_format($baseDaily, 2); ?>
+                </span>
+            </p>
+
+            <p class="text-green-400 text-sm mt-1">
+                Today Limit: 
+                <span class="font-bold">
+                    TK <?php echo number_format($dailyLimit, 2); ?>
+                </span>
+            </p>
+
+            <p class="text-yellow-400 text-sm mt-1">
+                Used Today: 
+                <span class="font-bold">
+                    TK <?php echo number_format($todayTotal, 2); ?>
+                </span>
+            </p>
+
+            <hr class="border-gray-700 my-3">
+
+            <p class="text-green-400 text-sm">
+                Remaining Total: 
+                <span class="font-bold">
+                    TK <?php echo number_format($remainingTotal, 2); ?>
+                </span>
+            </p>
+
         </div>
 
     </div>
 
-    <!--Subscription Card -->
-    <div class="max-w-7xl mx-auto">
-        <div class="bg-gray-900 bg-opacity-90 backdrop-blur-md p-6 rounded-xl shadow-lg border border-green-500 mb-12">
-            <h3 class="text-gray-400 mb-2">Subscription</h3>
+    <!-- 🔥 PROGRESS -->
+    <div class="max-w-3xl mx-auto mb-12">
+        <div class="flex justify-between text-sm text-gray-400 mb-2">
+            <span>Daily Usage</span>
+            <span><?php echo round($percent); ?>%</span>
+        </div>
 
-            <?php if ($subscription): ?>
-                <p class="text-green-400 font-bold text-lg">
-                    <?php echo strtoupper($subscription['plan']); ?> PLAN
-                </p>
+        <div class="w-full bg-gray-700 h-3 rounded-full overflow-hidden">
+            <div class="h-3 rounded-full transition-all duration-500
+                <?php echo $percent > 80
+                    ? 'bg-red-500'
+                    : ($percent > 50
+                        ? 'bg-yellow-500'
+                        : 'bg-green-500'); ?>"
+                style="width: <?php echo $percent; ?>%">
+            </div>
+        </div>
+    </div>
+
+    <!-- 🍽 MEALS -->
+    <div class="max-w-5xl mx-auto">
+
+        <?php
+        function groupMeals($meals)
+        {
+            $grouped = [];
+
+            foreach ($meals as $meal) {
+                $key = $meal['name'];
+
+                if (!isset($grouped[$key])) {
+                    $grouped[$key] = [
+                        'name' => $meal['name'],
+                        'ids' => [$meal['id']], // ✅ FIX
+                        'count' => 1,
+                    ];
+                } else {
+                    $grouped[$key]['count']++;
+                    $grouped[$key]['ids'][] = $meal['id']; // ✅ FIX
+                }
+            }
+
+            return $grouped;
+        }
+
+        function renderMeals($title, $meals)
+        {
+            ?>
+            <h3 class="text-xl text-white mt-10 mb-4"><?php echo $title; ?></h3>
+
+            <?php if (empty($meals)): ?>
+                <p class="text-gray-400">No items selected</p>
             <?php else: ?>
-                <p class="text-gray-400">No active plan</p>
-            <?php endif; ?>
-        </div>
-    </div>
+                <?php foreach ($meals as $meal): ?>
+                    <div class="bg-gray-800 p-4 mb-3 rounded-lg flex justify-between items-center">
 
-    <!-- Orders Section -->
-    <div class="max-w-7xl mx-auto">
-        <h3 class="text-2xl font-bold text-white mb-6 border-b-2 border-green-500 inline-block">
-            Your Orders
-        </h3>
-
-        <?php if (empty($orders)): ?>
-            <p class="text-gray-400">You have no orders yet.</p>
-        <?php else: ?>
-
-            <div class="space-y-4">
-
-                <?php foreach ($orders as $order): ?>
-
-                    <div class="bg-gray-900 bg-opacity-90 backdrop-blur-md p-5 rounded-xl shadow-lg border border-gray-700 flex justify-between items-center">
-
-                        <!-- Order Info -->
                         <div>
-                            <h4 class="font-bold text-white">
-                                <?php echo htmlspecialchars($order['name']); ?>
-                            </h4>
-                            <p class="text-gray-400 text-sm">
-                                <?php echo $order['created_at']; ?>
+                            <p class="text-white font-semibold">
+                                <?php echo htmlspecialchars($meal['name']); ?>
+                            </p>
+
+                            <p class="text-yellow-400 text-sm">
+                                Quantity: x<?php echo $meal['count']; ?>
                             </p>
                         </div>
 
-                        <!-- Actions -->
-                        <div class="flex items-center gap-4">
-
-                            <span class="text-green-400 font-bold">
-                                TK <?php echo htmlspecialchars(
-                                    $order['price'],
-                                ); ?>
-                            </span>
-
-                            <!-- Cancel Button -->
-                            <form method="POST" action="/mealbox/public/?url=delete-order" class="delete-form">
-                                <input type="hidden" name="order_id" value="<?php echo $order[
-                                    'id'
-                                ]; ?>">
-
-                                <button type="button"
-                                    onclick="openModal(this)"
-                                    class="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition">
-                                    Cancel
-                                </button>
-                            </form>
-
-                        </div>
+                        <!-- ✅ REMOVE 1 (uses first ID) -->
+                        <button onclick="openModal(<?php echo $meal[
+                            'ids'
+                        ][0]; ?>)"
+                            class="bg-red-500 px-4 py-1.5 rounded text-white hover:bg-red-600 transition">
+                            Remove 1
+                        </button>
 
                     </div>
-
                 <?php endforeach; ?>
+            <?php endif;
+        }
+        ?>
 
-            </div>
-
-        <?php endif; ?>
+        <?php renderMeals('🍳 Breakfast', groupMeals($breakfastMeals)); ?>
+        <?php renderMeals('🍛 Lunch', groupMeals($lunchMeals)); ?>
+        <?php renderMeals('🍽 Dinner', groupMeals($dinnerMeals)); ?>
 
     </div>
 
 </div>
 
-<!-- Confirm Modal -->
-<div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
-    
-    <div class="bg-gray-900 p-6 rounded-xl shadow-lg border border-gray-700 w-80 text-center animate-fadeIn">
-        
+<!-- 🔥 MODAL -->
+<div id="confirmModal"
+     class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
+
+    <div class="bg-gray-900 p-6 rounded-xl border border-gray-700 w-80 text-center">
+
         <h3 class="text-lg font-bold text-white mb-4">
-            Cancel Order?
+            Remove 1 Item?
         </h3>
 
         <p class="text-gray-400 mb-6 text-sm">
-            This action cannot be undone.
+            This will remove only one quantity.
         </p>
+
+        <input type="hidden" id="modalSelectionId">
 
         <div class="flex justify-center gap-4">
 
             <button onclick="closeModal()"
-                class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
-                No
+                class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                Cancel
             </button>
 
-            <button id="confirmDeleteBtn"
-                class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
-                Yes, Cancel
+            <button onclick="removeMeal()"
+                class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                Remove
             </button>
 
         </div>
@@ -143,46 +227,55 @@
 
 </div>
 
-<!-- Modal Script -->
+<!-- 🔔 TOAST -->
+<div id="toast"
+     class="fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg hidden z-50">
+</div>
+
 <script>
-let selectedForm = null;
-
-function openModal(button) {
-    selectedForm = button.closest('form');
-
-    const modal = document.getElementById('confirmModal');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+function openModal(id) {
+    document.getElementById('modalSelectionId').value = id;
+    document.getElementById('confirmModal').classList.remove('hidden');
+    document.getElementById('confirmModal').classList.add('flex');
 }
 
 function closeModal() {
-    const modal = document.getElementById('confirmModal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+    document.getElementById('confirmModal').classList.add('hidden');
+    document.getElementById('confirmModal').classList.remove('flex');
 }
 
-// Confirm delete
-document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
-    if (selectedForm) {
-        selectedForm.submit();
-    }
-});
+function removeMeal() {
+    const id = document.getElementById('modalSelectionId').value;
 
-// Close on outside click
-document.getElementById('confirmModal').addEventListener('click', function (e) {
-    if (e.target === this) {
-        closeModal();
-    }
+    fetch('/mealbox/public/?url=remove-meal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'selection_id=' + id
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'deleted') {
+            closeModal();
+            showToast('Removed 1 item ❌', 'red');
+            setTimeout(() => location.reload(), 600);
+        }
+    });
+}
+
+function showToast(msg, type='green') {
+    const toast = document.getElementById('toast');
+
+    toast.innerText = msg;
+    toast.className = `fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 
+        ${type === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`;
+
+    toast.classList.remove('hidden');
+
+    setTimeout(() => toast.classList.add('hidden'), 2000);
+}
+
+// close modal outside
+document.getElementById('confirmModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
 });
 </script>
-
-<style>
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-.animate-fadeIn {
-    animation: fadeIn 0.2s ease-out;
-}
-</style>

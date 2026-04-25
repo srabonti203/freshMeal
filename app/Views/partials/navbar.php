@@ -11,6 +11,11 @@
             Menu
         </a>
 
+        <a href="/mealbox/public/?url=profile" 
+           class="text-white hover:text-green-400 font-medium transition">
+            Profile
+        </a>
+
         <?php if (isset($_SESSION['user'])): ?>
 
             <a href="/mealbox/public/?url=dashboard" 

@@ -51,7 +51,7 @@ class LoginController
     //REGISTER
     public function register()
     {
-        session_start();
+        // session_start();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require '../config/database.php';
