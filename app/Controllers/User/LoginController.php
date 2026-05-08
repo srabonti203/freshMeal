@@ -59,8 +59,8 @@ class LoginController
         }
 
         // VIEW
-        $view = '../app/Views/login.php';
-        require '../app/Views/layout.php';
+        $view = '../app/Views/user/login.php';
+        require '../app/Views/layouts/layout.php';
     }
 
     // ================= REGISTER =================
@@ -99,7 +99,7 @@ class LoginController
             }
 
             // CHECK EMAIL
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE email=?');
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
             $stmt->execute([$email]);
 
             if ($stmt->fetch()) {
@@ -109,15 +109,14 @@ class LoginController
             }
 
             // GENERATE OTP
-            $otp = rand(100000, 999999);
             date_default_timezone_set('Asia/Dhaka');
 
             $otp = rand(100000, 999999);
             $expiry = date('Y-m-d H:i:s', time() + 300);
 
-            // INSERT USER (NOT VERIFIED)
+            // INSERT USER
             $stmt = $pdo->prepare("
-                INSERT INTO users 
+                INSERT INTO users
                 (name, phone, address, email, password, otp_code, otp_expires_at, is_verified)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 0)
             ");
@@ -132,10 +131,10 @@ class LoginController
                 $expiry,
             ]);
 
-            // STORE EMAIL FOR OTP STEP
+            // STORE EMAIL
             $_SESSION['verify_email'] = $email;
 
-            // SEND OTP EMAIL
+            // SEND OTP
             require '../app/Services/MailService.php';
             MailService::sendOTP($email, $otp);
 
@@ -143,11 +142,11 @@ class LoginController
             exit();
         }
 
-        $view = '../app/Views/register.php';
-        require '../app/Views/layout.php';
+        $view = '../app/Views/user/register.php';
+        require '../app/Views/layouts/layout.php';
     }
 
-    // ================= OTP VERIFY =================
+    // ================= VERIFY OTP =================
     public function verifyOTP()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -155,6 +154,13 @@ class LoginController
         }
 
         date_default_timezone_set('Asia/Dhaka');
+
+        // SHOW OTP PAGE FIRST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $view = '../app/Views/user/verify-otp.php';
+            require '../app/Views/layouts/layout.php';
+            return;
+        }
 
         require '../config/database.php';
 
@@ -207,16 +213,18 @@ class LoginController
         exit();
     }
 
+    // ================= FORGOT PASSWORD =================
     public function forgotPassword()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        $view = '../app/Views/forgot-password.php';
-        require '../app/Views/layout.php';
+        $view = '../app/Views/user/forgot-password.php';
+        require '../app/Views/layouts/layout.php';
     }
 
+    // ================= SEND RESET LINK =================
     public function sendResetLink()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -256,9 +264,10 @@ class LoginController
         $stmt->execute([$email]);
 
         $stmt = $pdo->prepare("
-        INSERT INTO password_resets (email, token, expires_at)
-        VALUES (?, ?, ?)
-    ");
+            INSERT INTO password_resets (email, token, expires_at)
+            VALUES (?, ?, ?)
+        ");
+
         $stmt->execute([$email, $token, $expires]);
 
         $resetLink =
@@ -269,10 +278,12 @@ class LoginController
         MailService::sendResetPasswordLink($email, $resetLink);
 
         $_SESSION['success'] = 'Password reset link sent to your email';
+
         header('Location: /mealbox/public/?url=login');
         exit();
     }
 
+    // ================= RESET PASSWORD PAGE =================
     public function resetPassword()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -290,12 +301,14 @@ class LoginController
         }
 
         $stmt = $pdo->prepare("
-        SELECT * FROM password_resets
-        WHERE token = ?
-        AND expires_at > ?
-        LIMIT 1
-    ");
+            SELECT * FROM password_resets
+            WHERE token = ?
+            AND expires_at > ?
+            LIMIT 1
+        ");
+
         $stmt->execute([$token, date('Y-m-d H:i:s')]);
+
         $reset = $stmt->fetch();
 
         if (!$reset) {
@@ -304,10 +317,11 @@ class LoginController
             exit();
         }
 
-        $view = '../app/Views/reset-password.php';
-        require '../app/Views/layout.php';
+        $view = '../app/Views/user/reset-password.php';
+        require '../app/Views/layouts/layout.php';
     }
 
+    // ================= UPDATE PASSWORD =================
     public function updatePassword()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -328,27 +342,33 @@ class LoginController
 
         if ($password !== $confirm) {
             $_SESSION['error'] = 'Passwords do not match';
+
             header(
                 'Location: /mealbox/public/?url=reset-password&token=' . $token,
             );
+
             exit();
         }
 
         if (strlen($password) < 6) {
             $_SESSION['error'] = 'Password must be at least 6 characters';
+
             header(
                 'Location: /mealbox/public/?url=reset-password&token=' . $token,
             );
+
             exit();
         }
 
         $stmt = $pdo->prepare("
-        SELECT * FROM password_resets
-        WHERE token = ?
-        AND expires_at > ?
-        LIMIT 1
-    ");
+            SELECT * FROM password_resets
+            WHERE token = ?
+            AND expires_at > ?
+            LIMIT 1
+        ");
+
         $stmt->execute([$token, date('Y-m-d H:i:s')]);
+
         $reset = $stmt->fetch();
 
         if (!$reset) {
@@ -360,12 +380,15 @@ class LoginController
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
         $stmt = $pdo->prepare('UPDATE users SET password = ? WHERE email = ?');
+
         $stmt->execute([$hashedPassword, $reset['email']]);
 
         $stmt = $pdo->prepare('DELETE FROM password_resets WHERE email = ?');
+
         $stmt->execute([$reset['email']]);
 
         $_SESSION['success'] = 'Password updated successfully. Please login.';
+
         header('Location: /mealbox/public/?url=login');
         exit();
     }

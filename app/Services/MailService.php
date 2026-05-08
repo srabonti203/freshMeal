@@ -17,11 +17,8 @@ class MailService
             $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
 
-            // YOUR GMAIL
-            $mail->Username = 'bithisrabontiakter@gmail.com';
-
-            // APP PASSWORD (NO SPACES!)
-            $mail->Password = 'pazugwkxqpztdvpx';
+            $mail->Username = $_ENV['MAIL_USERNAME'];
+            $mail->Password = $_ENV['MAIL_PASSWORD'];
 
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
@@ -69,8 +66,8 @@ class MailService
             $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
 
-            $mail->Username = 'bithisrabontiakter@gmail.com';
-            $mail->Password = 'pazugwkxqpztdvpx';
+            $mail->Username = $_ENV['MAIL_USERNAME'];
+            $mail->Password = $_ENV['MAIL_PASSWORD'];
 
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;

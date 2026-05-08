@@ -1,5 +1,3 @@
-<?php require '../app/Views/partials/navbar.php'; ?>
-
 <div class="min-h-screen bg-black pt-28 px-6">
 
     <h2 class="text-3xl text-white font-bold text-center mb-12">

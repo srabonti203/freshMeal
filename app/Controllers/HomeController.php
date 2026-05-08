@@ -9,6 +9,6 @@ class HomeController
         }
 
         $view = '../app/Views/home.php';
-        require '../app/Views/layout.php';
+        require '../app/Views/layouts/layout.php';
     }
 }

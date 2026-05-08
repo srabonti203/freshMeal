@@ -6,7 +6,6 @@ class CarryOverService
     {
         $today = date('Y-m-d');
 
-        // جلوگیری از اجرای دوباره در یک روز
         if ($subscription['last_carry_date'] === $today) {
             return;
         }

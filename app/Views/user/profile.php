@@ -1,5 +1,3 @@
-<?php require '../app/Views/partials/navbar.php'; ?>
-
 <div class="min-h-screen bg-black pt-28 px-6">
 
 <div class="max-w-7xl mx-auto flex gap-6">

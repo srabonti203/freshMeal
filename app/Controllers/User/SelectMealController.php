@@ -25,7 +25,7 @@ class SelectMealController
             exit();
         }
 
-        // 🔥 SUBSCRIPTION (still email-based)
+        // SUBSCRIPTION
         $stmt = $pdo->prepare("
             SELECT * FROM subscriptions 
             WHERE user_email = ? 
@@ -40,7 +40,7 @@ class SelectMealController
             exit();
         }
 
-        // 🔥 DAILY LIMIT
+        // DAILY LIMIT
         $plan = $subscription['plan'];
         $price = $subscription['price'];
 
@@ -53,7 +53,7 @@ class SelectMealController
                         ? $price / 30
                         : 999999));
 
-        // 🔥 TODAY TOTAL (FIXED)
+        // TODAY TOTAL
         $stmt = $pdo->prepare("
             SELECT SUM(price) as total
             FROM orders
@@ -63,7 +63,7 @@ class SelectMealController
         $stmt->execute([$userId]);
         $todayTotal = $stmt->fetch()['total'] ?? 0;
 
-        // 🔥 MEAL PRICE
+        // MEAL PRICE
         $stmt = $pdo->prepare('SELECT price FROM meals WHERE id = ?');
         $stmt->execute([$meal_id]);
         $mealPrice = $stmt->fetch()['price'] ?? 0;
@@ -73,7 +73,7 @@ class SelectMealController
             exit();
         }
 
-        // ✅ INSERT (FIXED)
+        // INSERT
         $stmt = $pdo->prepare("
             INSERT INTO orders (user_id, meal_id, meal_type, price)
             VALUES (?, ?, ?, ?)

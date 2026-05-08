@@ -57,8 +57,8 @@ class ProfileController
         $stmt->execute([$user['email']]);
         $subscription = $stmt->fetch();
 
-        $view = '../app/Views/profile.php';
-        require '../app/Views/layout.php';
+        $view = '../app/Views/user/profile.php';
+        require '../app/Views/layouts/layout.php';
     }
 
     public function update()

@@ -32,7 +32,9 @@
 <script>
     setTimeout(() => {
         const toast = document.getElementById('toast');
-        if (toast) toast.style.display = 'none';
+        if (toast) {
+            toast.style.display = 'none';
+        }
     }, 3000);
 </script>
 

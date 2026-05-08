@@ -8,8 +8,8 @@ class SubscriptionController
             session_start();
         }
 
-        $view = '../app/Views/subscription.php';
-        require '../app/Views/layout.php';
+        $view = '../app/Views/user/subscription.php';
+        require '../app/Views/layouts/layout.php';
     }
 
     public function store()

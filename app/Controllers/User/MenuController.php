@@ -42,14 +42,18 @@ class MenuController
             case 'low':
                 $query .= ' ORDER BY price ASC';
                 break;
+
             case 'high':
                 $query .= ' ORDER BY price DESC';
                 break;
+
             case 'name':
                 $query .= ' ORDER BY name ASC';
                 break;
+
             default:
                 $query .= ' ORDER BY id DESC';
+                break;
         }
 
         if (isset($_SESSION['user'])) {
@@ -59,6 +63,7 @@ class MenuController
                 ORDER BY created_at DESC 
                 LIMIT 1
             ");
+
             $stmt->execute([$_SESSION['user']]);
             $sub = $stmt->fetch();
 
