@@ -1,3 +1,8 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+} ?>
+
 <div class="min-h-screen bg-cover bg-center"
      style="background-image: url('/mealbox/public/assets/images/login-reg bg.avif');">
 
@@ -14,24 +19,57 @@
                     Start your healthy journey today
                 </p>
 
-                <?php if (isset($error)): ?>
+                <!-- ✅ ERROR MESSAGE -->
+                <?php if (isset($_SESSION['error'])): ?>
                     <p class="text-red-400 text-center mb-4 text-sm font-medium">
-                        <?php echo htmlspecialchars($error); ?>
+                        <?php
+                        echo $_SESSION['error'];
+                        unset($_SESSION['error']);
+                        ?>
                     </p>
                 <?php endif; ?>
 
+                <!-- ✅ SUCCESS MESSAGE (optional) -->
+                <?php if (isset($_SESSION['success'])): ?>
+                    <p class="text-green-400 text-center mb-4 text-sm font-medium">
+                        <?php
+                        echo $_SESSION['success'];
+                        unset($_SESSION['success']);
+                        ?>
+                    </p>
+                <?php endif; ?>
+
+                <!-- ✅ FORM START -->
                 <form method="POST" action="/mealbox/public/?url=register" class="space-y-4">
 
+                    <!-- NAME -->
+                    <input type="text" name="name" placeholder="Full Name" required
+                        class="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-gray-200 focus:ring-2 focus:ring-green-400 outline-none transition">
+
+                    <!-- PHONE -->
+                    <input type="text" name="phone" placeholder="Phone Number" required
+                        class="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-gray-200 focus:ring-2 focus:ring-green-400 outline-none transition">
+
+                    <!-- ADDRESS -->
+                    <input type="text" name="address" placeholder="Address" required
+                        class="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-gray-200 focus:ring-2 focus:ring-green-400 outline-none transition">
+
+                    <!-- EMAIL -->
                     <input type="email" name="email" placeholder="Email" required
                         class="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-gray-200 focus:ring-2 focus:ring-green-400 outline-none transition">
 
+                    <!-- PASSWORD -->
                     <input type="password" name="password" placeholder="Password" required
                         class="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-gray-200 focus:ring-2 focus:ring-green-400 outline-none transition">
 
-                    <button class="w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-3 rounded-lg font-semibold shadow-lg hover:from-green-700 hover:to-green-600 transition">
+                    <!-- BUTTON -->
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-3 rounded-lg font-semibold shadow-lg hover:from-green-700 hover:to-green-600 transition">
                         Register
                     </button>
+
                 </form>
+                <!-- ✅ FORM END -->
 
                 <p class="text-center mt-6 text-sm text-gray-300">
                     Already have an account?
@@ -39,6 +77,7 @@
                         Login
                     </a>
                 </p>
+
             </div>
         </div>
     </div>

@@ -5,24 +5,24 @@
     <!-- Heading -->
     <div class="text-center mb-10">
         <h2 class="text-3xl font-extrabold text-white border-b-4 border-green-500 inline-block pb-2">
-            Our Menu 🍱
+            Our Menu
         </h2>
     </div>
 
     <!-- Meal Counts -->
     <div class="text-center mb-6 text-gray-300">
-        🍳 Breakfast: <span id="count-breakfast"><?php echo $mealCounts[
+        Breakfast: <span id="count-breakfast"><?php echo $mealCounts[
             'breakfast'
         ]; ?></span> |
-        🍛 Lunch: <span id="count-lunch"><?php echo $mealCounts[
+        Lunch: <span id="count-lunch"><?php echo $mealCounts[
             'lunch'
         ]; ?></span> |
-        🍽 Dinner: <span id="count-dinner"><?php echo $mealCounts[
+        Dinner: <span id="count-dinner"><?php echo $mealCounts[
             'dinner'
         ]; ?></span>
     </div>
 
-    <!-- 🔥 Budget -->
+    <!-- Budget -->
     <div class="text-center mb-6 space-y-1">
         <p class="text-gray-300">
             Daily Limit:
@@ -77,13 +77,53 @@
         </div>
     </div>
 
+    <!-- Top Actions -->
+    <div class="max-w-7xl mx-auto mb-8 flex justify-between items-center">
+
+        <!-- Total Items -->
+        <div class="bg-gray-900 border border-gray-700 px-5 py-2 rounded-lg">
+            <span class="text-gray-300 text-sm">
+                Total Items:
+            </span>
+
+            <span class="text-green-400 font-bold">
+                <?php echo count($meals); ?>
+            </span>
+        </div>
+
+        <!-- Filter -->
+        <div class="relative inline-block text-left">
+
+            <button onclick="toggleFilter()"
+                class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition">
+                Filter
+            </button>
+
+            <div id="filterMenu"
+                class="hidden absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg z-50">
+
+                <a href="/mealbox/public/?url=menu&sort=low"
+                    class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-green-400">
+                    Low to High
+                </a>
+
+                <a href="/mealbox/public/?url=menu&sort=high"
+                    class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-green-400">
+                    High to Low
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+
     <!-- Grid -->
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 
         <?php foreach ($meals as $meal): ?>
             <div class="meal-card bg-gray-900 rounded-xl overflow-hidden border border-gray-700 flex flex-col transition hover:scale-105 hover:shadow-xl hover:shadow-green-500/20 cursor-pointer">
 
-                <!-- ✅ CLICKABLE AREA -->
+                <!-- CLICKABLE AREA -->
                 <a href="/mealbox/public/?url=meal&id=<?php echo $meal[
                     'id'
                 ]; ?>">
@@ -97,7 +137,7 @@
 
                     <div class="p-4">
 
-                        <h3 class="text-white font-bold">
+                        <h3 class="text-white font-bold hover:text-green-400 transition">
                             <?php echo htmlspecialchars($meal['name']); ?>
                         </h3>
 
@@ -111,7 +151,7 @@
 
                 </a>
 
-                <!-- ✅ BUTTONS -->
+                <!-- BUTTONS -->
                 <div class="p-4 pt-0 mt-auto">
 
                     <p class="text-green-400 font-bold mb-3">
@@ -183,14 +223,13 @@ function updateUI() {
     document.getElementById('remaining').innerText = remaining.toFixed(2);
 }
 
-// ✅ FIXED: prevent navigation
 function selectMeal(e, button, mealId, type, price) {
     e.stopPropagation();
 
     let remaining = limit - total;
 
     if (price > remaining) {
-        showToast("Budget exceeded ❌", "error");
+        showToast("Budget exceeded", "error");
         return;
     }
 
@@ -201,27 +240,42 @@ function selectMeal(e, button, mealId, type, price) {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.status === 'expired') {
-            showToast("Plan expired ❌", "error");
+
+        if (data.status === 'nosubscription') {
+            showToast("No subscription", "error");
+            return;
+        }
+
+        if (data.status === 'limit_reached') {
+            showToast("Daily limit reached", "error");
             return;
         }
 
         if (data.status === 'success') {
             total += price;
-            counts = data.counts;
+            counts[type]++;
+
             updateUI();
+
             showToast("Meal added ✅", "green");
         }
+    })
+    .catch(() => {
+        showToast("Something went wrong", "error");
     });
 }
 
-// Toast
 function showToast(msg, type="normal"){
     let toast = document.createElement('div');
     toast.innerText = msg;
     toast.className = `toast ${type}`;
     document.body.appendChild(toast);
+
     setTimeout(()=>toast.remove(),2000);
+}
+
+function toggleFilter() {
+    document.getElementById('filterMenu').classList.toggle('hidden');
 }
 </script>
 

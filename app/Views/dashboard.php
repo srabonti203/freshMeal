@@ -32,7 +32,7 @@
     $remainingTotal = $totalBudget - $todayTotal;
     ?>
 
-    <!-- 🔥 TOP SECTION -->
+    <!-- TOP SECTION -->
     <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
 
         <!-- Plan -->
@@ -59,7 +59,7 @@
             <h3 class="text-gray-400 mb-3">Budget</h3>
 
             <p class="text-white text-sm">
-                Total Plan: 
+                Total Plan:
                 <span class="font-bold text-blue-400">
                     TK <?php echo number_format($totalBudget, 2); ?>
                 </span>
@@ -72,21 +72,21 @@
             <hr class="border-gray-700 my-3">
 
             <p class="text-white text-sm">
-                Daily Base: 
+                Daily Base:
                 <span class="text-gray-300">
                     TK <?php echo number_format($baseDaily, 2); ?>
                 </span>
             </p>
 
             <p class="text-green-400 text-sm mt-1">
-                Today Limit: 
+                Today Limit:
                 <span class="font-bold">
                     TK <?php echo number_format($dailyLimit, 2); ?>
                 </span>
             </p>
 
             <p class="text-yellow-400 text-sm mt-1">
-                Used Today: 
+                Used Today:
                 <span class="font-bold">
                     TK <?php echo number_format($todayTotal, 2); ?>
                 </span>
@@ -95,7 +95,7 @@
             <hr class="border-gray-700 my-3">
 
             <p class="text-green-400 text-sm">
-                Remaining Total: 
+                Remaining Total:
                 <span class="font-bold">
                     TK <?php echo number_format($remainingTotal, 2); ?>
                 </span>
@@ -105,7 +105,7 @@
 
     </div>
 
-    <!-- 🔥 PROGRESS -->
+    <!-- PROGRESS -->
     <div class="max-w-3xl mx-auto mb-12">
         <div class="flex justify-between text-sm text-gray-400 mb-2">
             <span>Daily Usage</span>
@@ -124,7 +124,7 @@
         </div>
     </div>
 
-    <!-- 🍽 MEALS -->
+    <!-- MEALS -->
     <div class="max-w-5xl mx-auto">
 
         <?php
@@ -138,12 +138,12 @@
                 if (!isset($grouped[$key])) {
                     $grouped[$key] = [
                         'name' => $meal['name'],
-                        'ids' => [$meal['id']], // ✅ FIX
+                        'ids' => [$meal['id']],
                         'count' => 1,
                     ];
                 } else {
                     $grouped[$key]['count']++;
-                    $grouped[$key]['ids'][] = $meal['id']; // ✅ FIX
+                    $grouped[$key]['ids'][] = $meal['id'];
                 }
             }
 
@@ -171,7 +171,6 @@
                             </p>
                         </div>
 
-                        <!-- ✅ REMOVE 1 (uses first ID) -->
                         <button onclick="openModal(<?php echo $meal[
                             'ids'
                         ][0]; ?>)"
@@ -185,15 +184,15 @@
         }
         ?>
 
-        <?php renderMeals('🍳 Breakfast', groupMeals($breakfastMeals)); ?>
-        <?php renderMeals('🍛 Lunch', groupMeals($lunchMeals)); ?>
-        <?php renderMeals('🍽 Dinner', groupMeals($dinnerMeals)); ?>
+        <?php renderMeals('Breakfast', groupMeals($breakfastMeals)); ?>
+        <?php renderMeals('Lunch', groupMeals($lunchMeals)); ?>
+        <?php renderMeals('Dinner', groupMeals($dinnerMeals)); ?>
 
     </div>
 
 </div>
 
-<!-- 🔥 MODAL -->
+<!-- MODAL -->
 <div id="confirmModal"
      class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50">
 
@@ -227,7 +226,7 @@
 
 </div>
 
-<!-- 🔔 TOAST -->
+<!-- TOAST -->
 <div id="toast"
      class="fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg hidden z-50">
 </div>
@@ -235,13 +234,35 @@
 <script>
 function openModal(id) {
     document.getElementById('modalSelectionId').value = id;
-    document.getElementById('confirmModal').classList.remove('hidden');
-    document.getElementById('confirmModal').classList.add('flex');
+
+    const modal = document.getElementById('confirmModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
 }
 
 function closeModal() {
-    document.getElementById('confirmModal').classList.add('hidden');
-    document.getElementById('confirmModal').classList.remove('flex');
+    const modal = document.getElementById('confirmModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function showToast(message, color = 'green') {
+    const toast = document.getElementById('toast');
+
+    toast.innerText = message;
+    toast.className = 'fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 text-white';
+
+    if (color === 'red') {
+        toast.classList.add('bg-red-600');
+    } else {
+        toast.classList.add('bg-green-600');
+    }
+
+    toast.classList.remove('hidden');
+
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 2000);
 }
 
 function removeMeal() {
@@ -249,33 +270,27 @@ function removeMeal() {
 
     fetch('/mealbox/public/?url=remove-meal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'selection_id=' + id
+        headers: { 
+            'Content-Type': 'application/x-www-form-urlencoded' 
+        },
+        body: 'selection_id=' + encodeURIComponent(id)
     })
     .then(res => res.json())
     .then(data => {
         if (data.status === 'deleted') {
             closeModal();
-            showToast('Removed 1 item ❌', 'red');
-            setTimeout(() => location.reload(), 600);
+            showToast('Removed 1 item', 'red');
+
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        } else {
+            showToast('Item not removed: ' + data.status, 'red');
         }
+    })
+    .catch(error => {
+        console.log(error);
+        showToast('Something went wrong', 'red');
     });
 }
-
-function showToast(msg, type='green') {
-    const toast = document.getElementById('toast');
-
-    toast.innerText = msg;
-    toast.className = `fixed top-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 
-        ${type === 'red' ? 'bg-red-600' : 'bg-green-600'} text-white`;
-
-    toast.classList.remove('hidden');
-
-    setTimeout(() => toast.classList.add('hidden'), 2000);
-}
-
-// close modal outside
-document.getElementById('confirmModal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
 </script>

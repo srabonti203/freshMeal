@@ -8,7 +8,7 @@ class SelectMealController
             session_start();
         }
 
-        if (!isset($_SESSION['user'])) {
+        if (!isset($_SESSION['user_id'])) {
             echo json_encode(['status' => 'unauthorized']);
             exit();
         }
@@ -17,21 +17,22 @@ class SelectMealController
 
         $meal_id = $_POST['meal_id'] ?? null;
         $meal_type = $_POST['meal_type'] ?? null;
-        $user = $_SESSION['user'];
+        $userId = $_SESSION['user_id'];
+        $email = $_SESSION['user']; // only for subscription
 
         if (!$meal_id || !$meal_type) {
             echo json_encode(['status' => 'invalid']);
             exit();
         }
 
-        // 🔥 BEFORE INSERT: check subscription and budget
+        // 🔥 SUBSCRIPTION (still email-based)
         $stmt = $pdo->prepare("
             SELECT * FROM subscriptions 
             WHERE user_email = ? 
             ORDER BY created_at DESC 
             LIMIT 1
         ");
-        $stmt->execute([$user]);
+        $stmt->execute([$email]);
         $subscription = $stmt->fetch();
 
         if (!$subscription) {
@@ -39,32 +40,30 @@ class SelectMealController
             exit();
         }
 
-        // Daily limit logic
+        // 🔥 DAILY LIMIT
         $plan = $subscription['plan'];
         $price = $subscription['price'];
 
-        if ($plan === 'daily') {
-            $dailyLimit = $price;
-        } elseif ($plan === 'weekly') {
-            $dailyLimit = $price / 7;
-        } elseif ($plan === 'monthly') {
-            $dailyLimit = $price / 30;
-        } else {
-            $dailyLimit = 999999; // premium unlimited
-        }
+        $dailyLimit =
+            $plan === 'daily'
+                ? $price
+                : ($plan === 'weekly'
+                    ? $price / 7
+                    : ($plan === 'monthly'
+                        ? $price / 30
+                        : 999999));
 
-        // Current total
+        // 🔥 TODAY TOTAL (FIXED)
         $stmt = $pdo->prepare("
-            SELECT SUM(meals.price) as total
-            FROM meal_selections
-            JOIN meals ON meal_selections.meal_id = meals.id
-            WHERE meal_selections.user_email = ?
-            AND DATE(meal_selections.created_at) = CURDATE()
+            SELECT SUM(price) as total
+            FROM orders
+            WHERE user_id = ?
+            AND DATE(created_at) = CURDATE()
         ");
-        $stmt->execute([$user]);
+        $stmt->execute([$userId]);
         $todayTotal = $stmt->fetch()['total'] ?? 0;
 
-        // Price of selected meal
+        // 🔥 MEAL PRICE
         $stmt = $pdo->prepare('SELECT price FROM meals WHERE id = ?');
         $stmt->execute([$meal_id]);
         $mealPrice = $stmt->fetch()['price'] ?? 0;
@@ -74,37 +73,14 @@ class SelectMealController
             exit();
         }
 
-        // ✅ insert
+        // ✅ INSERT (FIXED)
         $stmt = $pdo->prepare("
-            INSERT INTO meal_selections (user_email, meal_id, meal_type)
-            VALUES (?, ?, ?)
+            INSERT INTO orders (user_id, meal_id, meal_type, price)
+            VALUES (?, ?, ?, ?)
         ");
-        $stmt->execute([$user, $meal_id, $meal_type]);
+        $stmt->execute([$userId, $meal_id, $meal_type, $mealPrice]);
 
-        // ✅ return updated counts
-        $stmt = $pdo->prepare("
-            SELECT meal_type, COUNT(*) as total
-            FROM meal_selections
-            WHERE user_email = ?
-            GROUP BY meal_type
-        ");
-        $stmt->execute([$user]);
-        $countsRaw = $stmt->fetchAll();
-
-        $counts = [
-            'breakfast' => 0,
-            'lunch' => 0,
-            'dinner' => 0,
-        ];
-
-        foreach ($countsRaw as $row) {
-            $counts[$row['meal_type']] = $row['total'];
-        }
-
-        echo json_encode([
-            'status' => 'success',
-            'counts' => $counts,
-        ]);
+        echo json_encode(['status' => 'success']);
         exit();
     }
 }

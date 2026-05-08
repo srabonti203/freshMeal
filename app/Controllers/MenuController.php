@@ -4,15 +4,17 @@ class MenuController
 {
     public function index()
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         require '../config/database.php';
 
-        // 🔍 Get inputs safely
         $search = trim($_GET['search'] ?? '');
         $min = ($_GET['min'] ?? '') !== '' ? (float) $_GET['min'] : null;
         $max = ($_GET['max'] ?? '') !== '' ? (float) $_GET['max'] : null;
         $sort = $_GET['sort'] ?? '';
 
-        // 🔒 Fix: if min > max, swap them
         if ($min !== null && $max !== null && $min > $max) {
             [$min, $max] = [$max, $min];
         }
@@ -20,44 +22,36 @@ class MenuController
         $query = 'SELECT * FROM meals WHERE 1=1';
         $params = [];
 
-        // 🔍 Search by name OR description (better UX)
         if (!empty($search)) {
             $query .= ' AND (name LIKE ? OR description LIKE ?)';
             $params[] = "%$search%";
             $params[] = "%$search%";
         }
 
-        // 💰 Min price
         if ($min !== null) {
             $query .= ' AND price >= ?';
             $params[] = $min;
         }
 
-        // 💰 Max price
         if ($max !== null) {
             $query .= ' AND price <= ?';
             $params[] = $max;
         }
 
-        // 🔽 Sorting
         switch ($sort) {
             case 'low':
                 $query .= ' ORDER BY price ASC';
                 break;
-
             case 'high':
                 $query .= ' ORDER BY price DESC';
                 break;
-
             case 'name':
                 $query .= ' ORDER BY name ASC';
                 break;
-
             default:
-                $query .= ' ORDER BY id DESC'; // latest meals
+                $query .= ' ORDER BY id DESC';
         }
 
-        // 🎯 Limit meals based on plan
         if (isset($_SESSION['user'])) {
             $stmt = $pdo->prepare("
                 SELECT plan FROM subscriptions 
@@ -69,32 +63,37 @@ class MenuController
             $sub = $stmt->fetch();
 
             if ($sub) {
-                switch ($sub['plan']) {
-                    case 'daily':
-                        $query .= ' LIMIT 3';
-                        break;
-
-                    case 'weekly':
-                        $query .= ' LIMIT 10';
-                        break;
-
-                    case 'monthly':
-                        $query .= ' LIMIT 20';
-                        break;
-
-                    case 'premium':
-                        // unlimited
-                        break;
+                if ($sub['plan'] === 'daily') {
+                    $query .= ' LIMIT 3';
+                } elseif ($sub['plan'] === 'weekly') {
+                    $query .= ' LIMIT 10';
+                } elseif ($sub['plan'] === 'monthly') {
+                    $query .= ' LIMIT 20';
                 }
             }
         }
 
-        // ✅ Execute safely
         $stmt = $pdo->prepare($query);
         $stmt->execute($params);
 
-        $meals = $stmt->fetchAll();
+        return $stmt->fetchAll();
+    }
 
-        return $meals;
+    public function detail($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        require '../config/database.php';
+
+        if (!$id) {
+            return false;
+        }
+
+        $stmt = $pdo->prepare('SELECT * FROM meals WHERE id = ?');
+        $stmt->execute([$id]);
+
+        return $stmt->fetch();
     }
 }

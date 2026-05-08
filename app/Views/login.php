@@ -39,6 +39,11 @@
                         Create one
                     </a>
                 </p>
+                <p class="text-center mt-4 text-sm">
+                 <a href="/mealbox/public/?url=forgot-password" class="text-green-400 hover:underline">
+                    Forgot Password?
+                    </a>
+</p>
             </div>
         </div>
     </div>

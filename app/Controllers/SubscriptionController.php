@@ -2,16 +2,21 @@
 
 class SubscriptionController
 {
-    // Show plans
     public function index()
     {
-        require '../app/Views/subscription.php';
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $view = '../app/Views/subscription.php';
+        require '../app/Views/layout.php';
     }
 
-    // Save subscription
     public function store()
     {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
 
         if (!isset($_SESSION['user'])) {
             $_SESSION['error'] = 'Login required';

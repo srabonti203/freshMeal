@@ -4,6 +4,11 @@ class HomeController
 {
     public function index()
     {
-        require '../app/Views/home.php';
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $view = '../app/Views/home.php';
+        require '../app/Views/layout.php';
     }
 }

@@ -32,16 +32,6 @@
                     TK <?php echo htmlspecialchars($meal['price']); ?>
                 </span>
 
-                <form method="POST" action="/mealbox/public/?url=order">
-                    <input type="hidden" name="meal_id" value="<?php echo $meal[
-                        'id'
-                    ]; ?>">
-
-                    <button class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
-                        Order Now
-                    </button>
-                </form>
-
             </div>
 
             <!-- Back button -->
