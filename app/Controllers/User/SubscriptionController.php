@@ -8,6 +8,18 @@ class SubscriptionController
             session_start();
         }
 
+        require '../config/database.php';
+
+        // ONLY ACTIVE PLANS
+        $stmt = $pdo->query("
+            SELECT *
+            FROM subscription_plans
+            WHERE status = 'active'
+            ORDER BY price ASC
+        ");
+
+        $plans = $stmt->fetchAll();
+
         $view = '../app/Views/user/subscription.php';
         require '../app/Views/layouts/layout.php';
     }
@@ -18,7 +30,7 @@ class SubscriptionController
             session_start();
         }
 
-        if (!isset($_SESSION['user'])) {
+        if (!isset($_SESSION['user_id'])) {
             $_SESSION['error'] = 'Login required';
             header('Location: /mealbox/public/?url=login');
             exit();
@@ -26,24 +38,65 @@ class SubscriptionController
 
         require '../config/database.php';
 
-        $user = $_SESSION['user'];
-        $plan = $_POST['plan'] ?? '';
-        $price = $_POST['price'] ?? 0;
+        $userId = $_SESSION['user_id'];
 
-        if (!$plan) {
-            $_SESSION['error'] = 'Invalid plan';
+        $planId = $_POST['plan_id'] ?? null;
+
+        if (!$planId || !filter_var($planId, FILTER_VALIDATE_INT)) {
+            $_SESSION['error'] = 'Invalid subscription plan';
             header('Location: /mealbox/public/?url=subscribe');
             exit();
         }
 
+        // GET PLAN
         $stmt = $pdo->prepare("
-            INSERT INTO subscriptions (user_email, plan, price)
-            VALUES (?, ?, ?)
+        SELECT *
+        FROM subscription_plans
+        WHERE id = ?
+        AND status = 'active'
+    ");
+
+        $stmt->execute([$planId]);
+        $plan = $stmt->fetch();
+
+        if (!$plan) {
+            $_SESSION['error'] = 'Subscription plan not found';
+            header('Location: /mealbox/public/?url=subscribe');
+            exit();
+        }
+
+        // EXPIRE OLD ACTIVE SUBSCRIPTIONS
+        $stmt = $pdo->prepare("
+        UPDATE subscriptions
+        SET status = 'expired'
+        WHERE user_id = ?
+        AND status = 'active'
+    ");
+
+        $stmt->execute([$userId]);
+
+        // CALCULATE EXPIRY DATE
+        $durationDays = (int) $plan['duration_days'];
+
+        $expiryDate = date('Y-m-d', strtotime("+$durationDays days"));
+
+        // INSERT NEW SUBSCRIPTION
+        $stmt = $pdo->prepare("
+            INSERT INTO subscriptions
+            (user_id, plan, plan_id, price, status, expiry_date)
+            VALUES (?, ?, ?, ?, 'active', ?)
         ");
 
-        $stmt->execute([$user, $plan, $price]);
+        $stmt->execute([
+            $userId,
+            $plan['slug'],
+            $plan['id'],
+            $plan['price'],
+            $expiryDate,
+        ]);
 
-        $_SESSION['success'] = 'Subscription activated 🎉';
+        $_SESSION['success'] = 'Subscription activated successfully 🎉';
+
         header('Location: /mealbox/public/?url=dashboard');
         exit();
     }

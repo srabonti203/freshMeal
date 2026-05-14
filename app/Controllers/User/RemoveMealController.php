@@ -41,19 +41,27 @@ class RemoveMealController
 
         // Get subscription again
         $stmt = $pdo->prepare("
-            SELECT * FROM subscriptions
-            WHERE user_email = ?
-            ORDER BY created_at DESC
+            SELECT 
+                s.*,
+                sp.duration_days
+            FROM subscriptions s
+            LEFT JOIN subscription_plans sp 
+                ON s.plan_id = sp.id
+            WHERE s.user_id = ?
+            ORDER BY s.created_at DESC
             LIMIT 1
         ");
-        $stmt->execute([$_SESSION['user']]);
+        $stmt->execute([$userId]);
         $subscription = $stmt->fetch();
 
-        $plan = $subscription['plan'];
-        $totalBudget = $subscription['price'];
-        $carry = $subscription['carry_over'] ?? 0;
+        $totalBudget = (float) $subscription['price'];
+        $carry = (float) ($subscription['carry_over'] ?? 0);
 
-        $days = $plan === 'weekly' ? 7 : ($plan === 'monthly' ? 30 : 1);
+        $days = (int) ($subscription['duration_days'] ?? 1);
+        if ($days <= 0) {
+            $days = 1;
+        }
+
         $baseDaily = $totalBudget / $days;
         $dailyLimit = $baseDaily + $carry;
 

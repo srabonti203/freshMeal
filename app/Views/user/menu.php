@@ -1,3 +1,23 @@
+<?php
+$daysTotal = (int) ($subscription['duration_days'] ?? 1);
+if ($daysTotal <= 0) {
+    $daysTotal = 1;
+}
+
+$todayDate = new DateTime(date('Y-m-d'));
+
+if (!empty($subscription['expiry_date'])) {
+    $endDate = new DateTime($subscription['expiry_date']);
+} else {
+    $startDate = new DateTime(
+        date('Y-m-d', strtotime($subscription['created_at'])),
+    );
+    $endDate = (clone $startDate)->modify("+{$daysTotal} days");
+}
+
+$daysLeft = $todayDate >= $endDate ? 0 : $todayDate->diff($endDate)->days;
+?>
+
 <div class="min-h-screen bg-black pt-28 px-6 md:px-10">
 
     <!-- Heading -->
@@ -22,6 +42,17 @@
 
     <!-- Budget -->
     <div class="text-center mb-6 space-y-1">
+
+        <p class="text-gray-300 text-sm">
+            Plan:
+            <span class="text-green-400 font-bold">
+                <?= htmlspecialchars(
+                    $subscription['plan_name'] ??
+                        ($subscription['plan'] ?? 'Plan'),
+                ) ?>
+            </span>
+        </p>
+
         <p class="text-gray-300">
             Daily Limit:
             <span class="text-green-400 font-bold">
@@ -44,16 +75,19 @@
         <p class="text-red-400 text-sm">
             Remaining:
             TK <span id="remaining"><?php echo number_format(
-                $dailyLimit - $todayTotal,
+                max($dailyLimit - $todayTotal, 0),
                 2,
             ); ?></span>
         </p>
+
     </div>
 
     <!-- Progress -->
     <?php
     $percent = $dailyLimit > 0 ? ($todayTotal / $dailyLimit) * 100 : 0;
     $percent = min($percent, 100);
+
+    $dailyLimitReached = $todayTotal >= $dailyLimit;
     ?>
 
     <div class="max-w-xl mx-auto mb-10">
@@ -157,6 +191,7 @@
                     </p>
 
                     <div class="flex gap-2 flex-wrap">
+
                         <?php foreach (
                             [
                                 'breakfast' => 'bg-yellow-500 text-black',
@@ -165,6 +200,7 @@
                             ]
                             as $type => $style
                         ): ?>
+
                             <button 
                                 data-price="<?php echo $meal['price']; ?>"
                                 onclick="selectMeal(event, this, <?php echo $meal[
@@ -172,10 +208,17 @@
                                 ]; ?>,'<?php echo $type; ?>',<?php echo $meal[
     'price'
 ]; ?>)"
-                                class="meal-btn <?php echo $style; ?> px-3 py-1 text-xs rounded font-semibold transition transform hover:shadow-lg active:scale-90">
+                                class="meal-btn <?php echo $dailyLimitReached
+                                    ? 'bg-gray-600 text-gray-300 cursor-not-allowed opacity-60'
+                                    : $style; ?> px-3 py-1 text-xs rounded font-semibold transition transform hover:shadow-lg active:scale-90"
+                                <?= $dailyLimitReached ? 'disabled' : '' ?>>
+
                                 <?php echo ucfirst($type); ?>
+
                             </button>
+
                         <?php endforeach; ?>
+
                     </div>
 
                 </div>
@@ -217,8 +260,16 @@ function updateUI() {
     document.getElementById('count-lunch').innerText = counts.lunch;
     document.getElementById('count-dinner').innerText = counts.dinner;
 
-    let remaining = limit - total;
+    let remaining = Math.max(limit - total, 0);
     document.getElementById('remaining').innerText = remaining.toFixed(2);
+
+    // DISABLE BUTTONS IF LIMIT REACHED
+    if (remaining <= 0) {
+        document.querySelectorAll('.meal-btn').forEach(btn => {
+            btn.disabled = true;
+            btn.classList.add('bg-gray-600', 'text-gray-300', 'cursor-not-allowed', 'opacity-60');
+        });
+    }
 }
 
 function selectMeal(e, button, mealId, type, price) {
@@ -227,7 +278,7 @@ function selectMeal(e, button, mealId, type, price) {
     let remaining = limit - total;
 
     if (price > remaining) {
-        showToast("Budget exceeded", "error");
+        showToast("Daily limit exceeded", "error");
         return;
     }
 

@@ -12,7 +12,6 @@ class MailService
         $mail = new PHPMailer(true);
 
         try {
-            // SMTP SETTINGS
             $mail->isSMTP();
             $mail->Host = 'smtp.gmail.com';
             $mail->SMTPAuth = true;
@@ -23,7 +22,6 @@ class MailService
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
 
-            // OPTIONAL (helps avoid SSL issues on some XAMPP setups)
             $mail->SMTPOptions = [
                 'ssl' => [
                     'verify_peer' => false,
@@ -32,8 +30,7 @@ class MailService
                 ],
             ];
 
-            // EMAIL CONTENT
-            $mail->setFrom('bithisrabontiakter@gmail.com', 'MealBox');
+            $mail->setFrom($_ENV['MAIL_USERNAME'], 'MealBox');
             $mail->addAddress($email);
 
             $mail->isHTML(true);
@@ -52,8 +49,7 @@ class MailService
 
             $mail->send();
         } catch (Exception $e) {
-            // Debug log (check Apache error log if needed)
-            error_log('Mailer Error: ' . $mail->ErrorInfo);
+            error_log('OTP Mailer Error: ' . $mail->ErrorInfo);
         }
     }
 
@@ -80,31 +76,31 @@ class MailService
                 ],
             ];
 
-            $mail->setFrom('bithisrabontiakter@gmail.com', 'MealBox');
+            $mail->setFrom($_ENV['MAIL_USERNAME'], 'MealBox');
             $mail->addAddress($email);
 
             $mail->isHTML(true);
             $mail->Subject = 'Reset Your MealBox Password';
 
             $mail->Body = "
-            <div style='font-family:Arial; text-align:center;'>
-                <h2>Password Reset Request</h2>
-                <p>Click the button below to reset your password.</p>
+                <div style='font-family:Arial; text-align:center;'>
+                    <h2>Password Reset Request</h2>
+                    <p>Click the button below to reset your password.</p>
 
-                <a href='$link' 
-                   style='display:inline-block; padding:12px 20px; background:#16a34a; color:white; text-decoration:none; border-radius:8px;'>
-                    Reset Password
-                </a>
+                    <a href='$link'
+                       style='display:inline-block; padding:12px 20px; background:#16a34a; color:white; text-decoration:none; border-radius:8px;'>
+                        Reset Password
+                    </a>
 
-                <p>This link will expire in 15 minutes.</p>
-            </div>
-        ";
+                    <p>This link will expire in 15 minutes.</p>
+                </div>
+            ";
 
             $mail->AltBody = "Reset your password using this link: $link";
 
             $mail->send();
         } catch (Exception $e) {
-            error_log('Reset Mail Error: ' . $mail->ErrorInfo);
+            error_log('Reset Mailer Error: ' . $mail->ErrorInfo);
         }
     }
 }
